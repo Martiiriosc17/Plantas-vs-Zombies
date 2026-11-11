@@ -2,44 +2,51 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-//Estados del juego
-#define MENU 0
+//Estados generales del juego
+#define MENU 0 
 #define JUGANDO 1
 #define WIN 2
 #define LOSE 3
 
-//Definiciones para la matriz del jardin
+//Definiciones para los tipos de plantas de la matriz del jardin
 #define VACIO 0
 #define GIRASOL 1
 #define LANZAGUISANTES 2
 #define NUEZ 3
 
-//Definir vida de las plantas
+// Definir vida inicial de las plantas
 #define VIDA_GIRASOL 40
 #define VIDA_LANZAGUISANTES 40
 #define VIDA_NUEZ 200
 
-//Para diferenciar la config de los soles de los girasoles y los del cielo
-#define SOLES_MAXIMOS 50 //Cantidad maxima de soles en pantalla
+//Para diferenciar los tipos de soles
 #define SOL_GIRASOL 1
 #define SOL_CIELO 2
+#define SOLES_MAXIMOS 50 // Cantidad maxima de soles al mismo tiempo
 
-// Definiciones para los tipos de zombies
-#define ZOMBIES_MAXIMOS 50 //Cantidad maxima de zombies
+// Para diferenciar los tipos de zombies
 #define NORMAL 1
 #define FLAG 2
+#define ZOMBIES_MAXIMOS 50 //Cantidad maxima de zombies al mismo tiempo
 
-// Estado del zombie
+// Estado del comportamiento de los zombies
 #define CAMINANDO 1
 #define ATACANDO 2
 
+#define PROYECTILES_MAXIMOS 100 // Cantidad maxima de proyectiles al mismo tiempo
 
-#define PROYECTILES_MAXIMOS 100
-// Esto es para los proyectiles y los zombies
+//Estados para los zombies y proyectiles
 #define MUERTO 0
 #define VIVO 1
 
 //Aqui estan todas las funciones de raylib: https://www.raylib.com/cheatsheet/cheatsheet.html
+
+/*
+Aclarar que lo primero de logica que se hizo fue todo lo de los soles, al ser lo primero
+no se hizo con struct, despues entendimos como funciona el struct y lo implementamos para
+los zombies y los proyectiles. No volvimos a hacer los soles con struct para tener tiempo
+suficiente para implementar las mejoras que ya teniamos pensadas
+*/
 
 //Struct con las stats de los zombies
 typedef struct {
@@ -67,21 +74,31 @@ typedef struct {
     int vivo;
 } Proyectil;
 
+
+
+
+//Aqui inicia el programa, esta parte inicializa todas las variables y ejecuta el programa
 int main(void) {
-    //Estado que inicia el juego
-    int estadoJuego = MENU;
+    int estadoJuego = MENU; //El juego se inicia en el menu
 
     // Ajustamos el tamaño del patio
     int filas = 5;
     int columnas = 9;
 
-    // Duracion del juego
-    int vidaCasa = 3;
-    int zombieCasa = 0;
-    int cantidadRondas = 2;
-    double duracionGracia = 5.0;
+    /*
+    Victoria: decidimos que el juego tenga un numero limitado de rondas, al completar la ultima ronda sin
+    haber superado el limite de zombies en la casa, entonces el jugador gana
+
+    Derrota: decidimos que lo mejor era que la casa pueda soportar un numero limitado de zombies (vidaCasa), 
+    y que si los zombies que llegan a la casa (zombieCasa) igualan este numero, entonces el jugador pierde
+    */
+    // Variables de las rondas y de la casa
+    int vidaCasa = 3; //Cuantos zombies pueden llegar a la casa
+    int zombieCasa = 0; //Cuantos zombies han llegado a la casa
+    int cantidadRondas = 5;
+    double duracionGracia = 8.0; //Tiempo antes de que empiece una ronda
     double tiempoInicioGracia = GetTime(); 
-    int rondaActual = 1;
+    int rondaActual = 1; //Contador de que ronda se esta jugando
     int rondaActiva = 0; // 0 = no hay ronda activa, 1 = si hay ronda activa
 
     // Dimensiones de la ventana donde se abre el juego
@@ -89,13 +106,13 @@ int main(void) {
     int pxAlto = 810; // 810
 
     // Dimensiones del jardin
-    int pxDistanciaX = 224; //Distancia de izq a dd empieza el jardin
-    int pxDistanciaY = 81; //Distancia de arriba a dd empieza el jardin
+    int pxDistanciaX = 224; //Distancia de izquierda a donde empieza el jardin
+    int pxDistanciaY = 81; //Distancia de arriba a donde empieza el jardin
     int anchoJardin = 1152; //Ancho total del jardin
     int altoJardin = 648; //Alto total del jardin
 
     // Soles iniciales y costos
-    int soles = 1000;
+    int soles = 100;
     int costoGirasol = 50;
     int costoLanzaguisantes = 100;
     int costoNuez = 50;
@@ -104,41 +121,41 @@ int main(void) {
     float solesRadio = 17.0;
     float solesX[SOLES_MAXIMOS]; //Coords eje x
     float solesY[SOLES_MAXIMOS]; //Coords eje y
-    int solesTipo[SOLES_MAXIMOS]; //Cielo o girasol
-    int solesPantalla[SOLES_MAXIMOS]; //Valor booleano de si en las coords hay un sol
-    double solesTiempo[SOLES_MAXIMOS]; //Cuanto dura un sol antes de despawnear
-    for (int i = 0; i < SOLES_MAXIMOS; i++) {
+    int solesTipo[SOLES_MAXIMOS]; //Tipo de sol (cielo o girasol)
+    int solesPantalla[SOLES_MAXIMOS]; //Valor booleano de si hay un sol en esa posicion
+    double solesTiempo[SOLES_MAXIMOS]; //Tiempo en el que aparecio el sol
+    for (int i = 0; i < SOLES_MAXIMOS; i++) { //Inicializamos todos los espacios de los arreglos
         solesX[i] = 0;
         solesY[i] = 0;
         solesTipo[i] = 0;
         solesPantalla[i] = 0;
         solesTiempo[i] = 0;
     }
-    double cooldownSol = 7.0;
-    double duracionSol = 4.5;
-    float velocidadSol = 40.0; //Como bajan del cielo
+    double cooldownSol = 7.0; //Cada cuanto producen los girasoles
+    double duracionSol = 4.5; //Tiempo que dura antes de despawnear
+    float velocidadSol = 40.0; //Velocidad a la que bajan del cielo
     double tiempoUltimoSolCielo = 0;
-    double cooldownSolCielo = 10.0;  
+    double cooldownSolCielo = 10.0;  //Cada cuanto aparecen soles del cielo
 
     //Variables para los zombies
     double tiempoUltimoZombie = 0;
-    float cooldownZombie = 5.0;
-    int zombiesGenerados = 0;
+    float cooldownZombie = 8.0; //Cada cuanto se genera 
+    int zombiesGenerados = 0; //Cuantos han spawneado esta ronda
     int zombiesPorRonda = 10;
-    int zombiesVivos = 0;
+    int zombiesVivos = 0; //Cuantos zombies hay vivos en el instante
     //Probabilidad de cada zombie
     float probabilidadNormal = 80;
 
-    //Proyectiles
+    //Variables para los proyectiles
     float cooldownProyectil = 2.0;
     float proyectilesRadio = 13.0;
 
-    Zombie zombies[ZOMBIES_MAXIMOS]; //Declaramos zombies como la funcion que tiene todas las stats de los zombies
+    Zombie zombies[ZOMBIES_MAXIMOS]; //Declaramos zombies como el arreglo que tiene todas las stats de los zombies
     for (int i = 0; i < ZOMBIES_MAXIMOS; i++) { //Inicializamos todos los zombies como muertos
         zombies[i].vivo = MUERTO;
     }
 
-    Proyectil proyectiles[PROYECTILES_MAXIMOS]; //Declaramos proyectiles como la funcion que tiene todas las stats de los proyectiles
+    Proyectil proyectiles[PROYECTILES_MAXIMOS]; //Declaramos proyectiles como el arreglo que tiene todas las stats de los proyectiles
     for (int i = 0; i < PROYECTILES_MAXIMOS; i++) { //Inicializamos todos los proyectiles como muertos
         proyectiles[i].vivo = MUERTO;
     }
@@ -148,8 +165,14 @@ int main(void) {
 
 
     /*
-    Reserva la memoria dinamica para cada 'matriz' (en filas primero)
+    En esta parte usamos la memoria dinamica para establecer el jardin en si, ademas la aprovechamos 
+    para calcular el tiempo en que se genero el ultimo sol de cada girasol, el tiempo del ultimo 
+    disparo de cada lanzaguistantes y la vida de cada planta
+    
+    Hicimos estas 4 cosas con memoria dinamica porque todas tienen mecanicas en funcion de filas y 
+    columnas, o sea que son estables, no como las cosas que dependen de la distancia en pixeles
     */
+    //Reservamos memoria para los punteros de las filas de cada matriz
     int **jardin = malloc(filas * sizeof(int *));
     double **tiempoUltimoSolGirasol = malloc(filas * sizeof(double *));
     double **tiempoUltimoDisparo = malloc(filas * sizeof(double *));
@@ -165,7 +188,7 @@ int main(void) {
         return 1;
     }
 
-    //Dejamos espacio para cada 'matriz (en columnas ahora)
+    //Reservamos memoria para las columnas de cada fila
     for (int i = 0; i < filas; i++) {
         jardin[i] = malloc(columnas * sizeof(int));
         tiempoUltimoSolGirasol[i] = malloc(columnas * sizeof(double));
@@ -190,13 +213,11 @@ int main(void) {
             free(tiempoUltimoDisparo);
             free(vidaPlanta);
 
-            return 1;
+            return 1; //Finalizamos el programa deibod al error
         }
     }
 
-
-
-        //Inicializa las variables en sus valores normales (desactivados)
+    //Inicializa todos los espacios de las matrices en sus valores normales (desactivados)
     for (int i = 0; i < filas; i++) {
         for (int j = 0; j < columnas; j++) {
             jardin[i][j] = VACIO;
@@ -210,39 +231,53 @@ int main(void) {
 
 
 
-    InitWindow(pxAncho, pxAlto, "Plantas vs Zombies (Probanding)"); //Se crea la ventana
-    SetTargetFPS(67); //FPS de la ventana
+    InitWindow(pxAncho, pxAlto, "Plantas vs Zombies"); //Se crea la ventana donde se ejecuta el juego
+    SetTargetFPS(60); //Establecemos los FPS del juego
 
-    // Como las dimensiones son configurables, calculamos el tamaño de cada casilla
+    // Como las dimensiones del jardin son configurables, calculamos el tamaño de cada casilla
     float anchoCasilla = (float)anchoJardin/columnas;
     float altoCasilla = (float)altoJardin/filas;
 
-    // Tamaño visual del zombie
+    // Tamaño que ocupan los zombies
     int anchoZombie = 40;
     int altoZombie = 60;
 
+    //Inicializamos la posicion del jardin que tiene seleccionada el usuario
     int filaSeleccionada = -1;
     int columnaSeleccionada = -1;
     int plantaSeleccionada = VACIO;
 
-    //Bucle de la pestaña abierta, esto es para que se ejecute el juego en si
-    while (!WindowShouldClose()) { //Mientras no (!) se tenga que cerrar la ventana)
+    //Bucle mientras la pestaña este abierta, esto es para que se ejecute el juego en si
+    while (!WindowShouldClose()) { //Mientras no (!) se tenga que cerrar la ventana
 
         //Primero declaramos las variables que se usan independiente del estado del juego
         Vector2 posMouse = GetMousePosition(); //devuelve la posicion x e y (con posMouse.x y posMouse.y se accede a c/u)
-        double tiempoActual = GetTime(); //Variable que se usa todo el rato
+        double tiempoActual = GetTime();
 
+        /*
+        El juego esta separado en 4 grandes secciones:
+        0- MENU: Aqui se inicia la partida, y ademas se puede cerrar el juego
+        1- JUGANDO: Todo el juego en si, es la logica de la partida
+        2- WIN: Pantalla que aparece cuando el usuario gana
+        3- LOSE: Pantalla que aparece cuando el usuario pierde
+        */
 
         if (estadoJuego == JUGANDO) {
         /*
-        Este primer bloque es de la logica de los clicks, detecta donde esta el mouse y donde se hace el click
-        para despues decidir si corresponde a una casilla del jardin, a una de las plantas o a un lugar sin nada    
+        El bloque de jugando es el mas extenso ya que incluye casi toda la logica, asi que esta subdividido en
+        diferentes bloques para darle mas orden y que se entienda mejor
+
+        Este primer bloque es de la logica de los clicks, detecta donde se hace el click para despues decidir si 
+        corresponde a una casilla del jardin, a un sol, a una planta del menu o a un lugar sin nada seleccionable  
         */
-            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) { //Verificamos que el click esta dentro del jardin
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) { //Detectamos si el usuario hizo click izquierdo
+
+                //Primero verificamos si hay un sol en esa posicion
                 int solRecogido = 0;
-                for (int i = 0; i < SOLES_MAXIMOS; i++) { //Verificamos si hay un sol y hace click en el
+                for (int i = 0; i < SOLES_MAXIMOS; i++) {
                     if (CheckCollisionPointCircle(posMouse,(Vector2){.x=solesX[i],.y=solesY[i]},solesRadio) && (solesPantalla[i] == 1)) {
-                        soles += 25;
+                        //Si hay un sol, entonces se suma a los soles totales y se reinician su valores en los arreglos
+                        soles += 25; 
                         solesPantalla[i] = 0;
                         solRecogido = 1;
                         solesTipo[i] = 0;
@@ -250,15 +285,19 @@ int main(void) {
                         break;
                     }
                 }
+
+                //Si no se hizo click sobre ningun sol, entonces verifica que el click este dentro del jardin
                 if (solRecogido == 0) {
                     if ((posMouse.x>=pxDistanciaX) && (posMouse.x<(pxDistanciaX+anchoJardin)) && (posMouse.y>=pxDistanciaY) && (posMouse.y<(pxDistanciaY+altoJardin))) {
+                        //Si el click esta dentro del jardin pasa su valor de pixeles a filas y columnas
                         int casillax = ((posMouse.x - pxDistanciaX) / anchoCasilla);
                         columnaSeleccionada = casillax;
                         int casillay = ((posMouse.y - pxDistanciaY) / altoCasilla);
                         filaSeleccionada = casillay;
-                        printf("Fila: %d | Columna: %d\n", casillay, casillax);
 
-                        if ((plantaSeleccionada != VACIO) && (jardin[filaSeleccionada][columnaSeleccionada] == VACIO)){ //Se le asignan valores a las plantas
+                        //Verifica si el usuario tiene seleccionada una planta y si en esa posicion del jardin no hay nada plantado
+                        if ((plantaSeleccionada != VACIO) && (jardin[filaSeleccionada][columnaSeleccionada] == VACIO)){
+                            //Se asigna el costo correspondiente segun el tipo de planta seleccionada
                             int costo = 0;
                             if (plantaSeleccionada == GIRASOL) {
                                 costo = costoGirasol;
@@ -268,9 +307,17 @@ int main(void) {
                                 costo = costoNuez;
                             }
 
+                            //Si el usuario tiene suficientes soles, entonces la planta en ese lugar
                             if (soles >= costo) {
                                 jardin[filaSeleccionada][columnaSeleccionada] = plantaSeleccionada;
 
+
+                            /*
+                            Si la planta es un girasol, ademas de plantarla inicia el contador para el spawneo de soles
+                            Si la planta es un lanzaguisantes, ademas de plantarla inicia el cooldown entre disparos
+
+                            Ademas, a todas las plantas se les asigna su vida y se les resta su costo
+                            */
                                 if (plantaSeleccionada == GIRASOL) {
                                     tiempoUltimoSolGirasol[filaSeleccionada][columnaSeleccionada] = GetTime();
                                     vidaPlanta[filaSeleccionada][columnaSeleccionada] = VIDA_GIRASOL;
@@ -281,16 +328,19 @@ int main(void) {
                                     vidaPlanta[filaSeleccionada][columnaSeleccionada] = VIDA_NUEZ;
                                 }
                                 soles -= costo;
-                                plantaSeleccionada = VACIO;           
+                                plantaSeleccionada = VACIO; //Se reinicia la planta seleccionada       
                             }
                         }
 
+                    //Se verifica si el click fue en la zona de seleccionar plantas
                     } else if ((posMouse.x>=64) && (posMouse.x<=204) && (posMouse.y>=140) && (posMouse.y<=540)) {
-                        for (int i = 0; i < 3; i++) {
+                        for (int i = 0; i < 3; i++) { //Determinamos que planta selecciono el usuario
                             if ((posMouse.y>=140+80*i) && (posMouse.y<=140+80*(i+1))) {
                                 plantaSeleccionada = i+1;
                             }
                         }
+
+                    //Si el click no es en ninguno de los lugares interactuables, entonces reinicia la casilla seleccionada
                     } else {
                         filaSeleccionada = -1;
                         columnaSeleccionada = -1;
@@ -304,33 +354,35 @@ int main(void) {
 
 
         /*
-        Este bloque es para el spawn d soles
+        Este bloque es para el spawn d soles, ya sean de girasoles o del cielo
         */
+        //Primero recorremos todas las casillas del jardin buscando girasoles y si ya paso su cooldown de spawnear soles
             for (int i = 0; i < filas; i++) {
                 for (int j = 0; j < columnas; j++) {
                     if ((jardin[i][j] == GIRASOL) && (tiempoActual - tiempoUltimoSolGirasol[i][j] >= cooldownSol)) {
                         for (int k = 0; k < SOLES_MAXIMOS; k++) {
-                            if (solesPantalla[k] == 0) {
+                            if (solesPantalla[k] == 0) { //Si se cumplen las condiciones, genera un sol
                                 solesPantalla[k] = 1;
-                                solesTipo[k] = SOL_GIRASOL;
-                                solesX[k] = pxDistanciaX + anchoCasilla / 2 + j * anchoCasilla;
+                                solesTipo[k] = SOL_GIRASOL; //Declara que es un sol de girasol
+                                solesX[k] = pxDistanciaX + anchoCasilla / 2 + j * anchoCasilla; //Calcula los pixeles del spawn
                                 solesY[k] = pxDistanciaY + altoCasilla / 2 + i * altoCasilla;
                                 solesTiempo[k] = tiempoActual;
                                 tiempoUltimoSolGirasol[i][j] = tiempoActual;
 
-                                break;
+                                break; //Al generar el sol, sale del bucle
                             }
                         }
                     }
                 }
             }
 
+            // Verificamos si paso el cooldown de generacion de sol del cielo
             if (tiempoActual - tiempoUltimoSolCielo >= cooldownSolCielo) {
                 for (int i = 0; i < SOLES_MAXIMOS; i++) {
                     if (solesPantalla[i] == 0) {
                         solesPantalla[i] = 1;
                         solesTipo[i] = SOL_CIELO;
-                        solesX[i] = GetRandomValue(224,1376); //Valores pueden cambiar segun coso
+                        solesX[i] = GetRandomValue(224,1376); //Da un valor aleatorio
                         solesY[i] = pxDistanciaY - solesRadio;
                         solesTiempo[i] = tiempoActual;
 
@@ -340,6 +392,7 @@ int main(void) {
                 }
             }
             
+            //Este bucle es para que soles del cielo se muevan
             for (int i = 0; i < SOLES_MAXIMOS; i++) {
                 if ((solesPantalla[i] == 1) && (solesTipo[i] == SOL_CIELO)) {
                     solesY[i] += velocidadSol *GetFrameTime();
