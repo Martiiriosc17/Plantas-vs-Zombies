@@ -32,7 +32,7 @@ float anchoCasilla = 0;
 float altoCasilla = 0;
 
 // Variables de los soles
-int soles = 300;
+int soles = 200;
 float solesRadio = 17.0;
 float solesX[SOLES_MAXIMOS];
 float solesY[SOLES_MAXIMOS];
@@ -59,6 +59,8 @@ Zombie zombies[ZOMBIES_MAXIMOS];
 // Variables de los proyectiles
 double cooldownLanzaguisantes = 2.0;
 double cooldownMetralla = 0.9;
+double duracionCongelacion = 1.5;
+double multRalentizacion = 0.5;
 float proyectilesRadio = 13.0;
 Proyectil proyectiles[PROYECTILES_MAXIMOS];
 
@@ -67,9 +69,17 @@ int costoGirasol = 50;
 int costoLanzaguisantes = 100;
 int costoNuez = 50;
 int costoMetralla = 200;
+int costoCongeladora = 200;
+int costoCereza = 150;
 int filaSeleccionada = -1;
 int columnaSeleccionada = -1;
 int plantaSeleccionada = VACIO;
+
+//Variables de la cereza
+int cerezaActiva = 0;
+int filaCereza = -1;
+int columnaCereza = -1;
+double tiempoCereza = 0;
 
 //Punteros a las matrices dinamicas
 int **jardin;
@@ -100,15 +110,7 @@ int main() {
     anchoCasilla = (float)anchoJardin / columnas;
     altoCasilla = (float)altoJardin / filas;
 
-
-    /*
-    En esta parte usamos la memoria dinamica para establecer el jardin en si, ademas la aprovechamos 
-    para calcular el tiempo en que se genero el ultimo sol de cada girasol, el tiempo del ultimo 
-    disparo de cada lanzaguistantes y la vida de cada planta
     
-    Hicimos estas 4 cosas con memoria dinamica porque todas tienen mecanicas en funcion de filas y 
-    columnas, o sea que son estables, no como las cosas que dependen de la distancia en pixeles
-    */
     InitWindow(pxAncho, pxAlto, "Plantas vs Zombies"); //Se crea la ventana donde se ejecuta el juego
     SetTargetFPS(60); //Establecemos los FPS del juego
 
@@ -148,6 +150,9 @@ int main() {
 
             //Para actualizar los proyectiles
             actualizarProyectiles(tiempoActual);
+
+            //Para detectar y actualizar cerezas
+            actualizarCereza(tiempoActual);
 
             //Para actualizar las rondas y comprobar si el jugador gano o perdio
             actualizarRondas(tiempoActual);
@@ -200,8 +205,19 @@ int main() {
                         DrawRectangle(x+5, y+5, anchoCasilla-10, altoCasilla-10, BLACK);
                     } else if (jardin[i][j] == METRALLA) {
                         DrawRectangle(x+5, y+5, anchoCasilla-10, altoCasilla-10, GOLD);
+                    } else if (jardin[i][j] == CONGELADORA) {
+                        DrawRectangle(x+5, y+5, anchoCasilla-10, altoCasilla-10, SKYBLUE);
                     } else if (jardin[i][j] == OBSTACULO) {
                         DrawRectangle(x+5, y+5, anchoCasilla-10, altoCasilla-10, GRAY);
+                    }
+                    if (cerezaActiva == 1) {
+                        float ancho = anchoCasilla - 10;
+                        float alto = altoCasilla - 10;
+
+                        float x = pxDistanciaX + columnaCereza * anchoCasilla + (anchoCasilla - ancho) / 2;
+                        float y = pxDistanciaY + filaCereza * altoCasilla + (altoCasilla - alto) / 2;
+
+                        DrawRectangle(x, y, ancho, alto, RED);
                     }
 
                     DrawRectangleLines(x, y,anchoCasilla, altoCasilla, BLACK);
