@@ -14,8 +14,8 @@
 #define LANZAGUISANTES 2
 #define NUEZ 3
 #define METRALLA 4
-#define plantanueva
-#define plantanueva
+#define CONGELADORA 5
+#define CEREZA 6
 #define PALA 7
 #define OBSTACULO 9
 #define MARGEN_OBSTACULO 4 //Cuantas columnas no pueden tener obstaculos de izquierda a derecha
@@ -23,13 +23,19 @@
 // Definir vida inicial de las plantas
 #define VIDA_GIRASOL 40
 #define VIDA_LANZAGUISANTES 40
-#define VIDA_NUEZ 200
+#define VIDA_NUEZ 250
 #define VIDA_METRALLA 40
+#define VIDA_CONGELADORA 40
+#define VIDA_CEREZA 100
 
 //Para diferenciar los tipos de soles
 #define SOL_GIRASOL 1
 #define SOL_CIELO 2
 #define SOLES_MAXIMOS 50 // Cantidad maxima de soles al mismo tiempo
+
+//Caracteristicas de la cereza
+#define DANO_CEREZA 150
+#define TIEMPO_CEREZA 1.0
 
 // Para diferenciar los tipos de zombies
 #define NORMAL 1
@@ -45,6 +51,10 @@
 //Estados para los zombies y proyectiles
 #define MUERTO 0
 #define VIVO 1
+
+// Para realentizar zombies
+#define NO_CONGELADO 0
+#define CONGELADO 1
 
 //Aqui estan todas las funciones de raylib: https://www.raylib.com/cheatsheet/cheatsheet.html
 
@@ -72,6 +82,8 @@ typedef struct {
     int dano;
     float cooldownAtaque;
     double tiempoUltimoAtaque;
+    int congelado;
+    double tiempoCongelado;
 } Zombie; 
 
 //Struct con las stats de los proyectiles
@@ -142,6 +154,8 @@ extern Zombie zombies[ZOMBIES_MAXIMOS];
 extern double cooldownLanzaguisantes;
 extern double cooldownMetralla;
 extern float proyectilesRadio;
+extern double duracionCongelacion;
+extern double multRalentizacion;
 extern Proyectil proyectiles[PROYECTILES_MAXIMOS];
 
 // Variables de seleccion de plantas y costos
@@ -149,9 +163,17 @@ extern int costoGirasol;
 extern int costoLanzaguisantes;
 extern int costoNuez;
 extern int costoMetralla;
+extern int costoCongeladora;
+extern int costoCereza;
 extern int filaSeleccionada;
 extern int columnaSeleccionada;
 extern int plantaSeleccionada;
+
+//Variables de la cereza
+extern int cerezaActiva;
+extern int filaCereza;
+extern int columnaCereza;
+extern double tiempoCereza;
 
 // Matrices dinamicas del jardin
 extern int **jardin;
@@ -179,6 +201,7 @@ void generarZombies(double tiempoActual);
 void actualizarZombies(double tiempoActual);
 void actualizarProyectiles(double tiempoActual);
 void actualizarRondas(double tiempoActual);
+void actualizarCereza(double tiempoActual);
 
 //Funcion para procesar las interacciones del jugador
 void procesarClicks(Vector2 posMouse);
