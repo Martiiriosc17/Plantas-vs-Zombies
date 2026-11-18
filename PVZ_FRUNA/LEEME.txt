@@ -1,0 +1,37 @@
+PVZ (FRUNA) - Plantas vs Zombies
+================================
+
+ARCHIVOS
+  main.c        Variables globales, loop principal y orden de dibujo
+  juego.h       Constantes, structs Zombie/Proyectil y prototipos de juego.c
+  juego.c       Toda la logica: lectura de archivos, soles, zombies, proyectiles, cereza, clics
+  graficos.h    Prototipos de las funciones de dibujo
+  graficos.c    Todo lo que se dibuja con raylib (solo dibuja, no cambia el juego)
+  Config.txt    Configuracion (ejemplo)
+  Jardin.txt    Mapa del jardin (ejemplo)
+  Makefile      Compila en Windows (w64devkit) y en Linux
+  include/, lib/  raylib 5.5 para Windows (solo se usan en Windows)
+  juego.exe     El juego ya compilado para Windows
+
+FORMATO DE Config.txt (8 numeros en una linea)
+  vidaCasa cantidadRondas zombiesPorRonda cantidadObstaculos duracionSol cooldownZombie cooldownSol cooldownSolCielo
+  Ejemplo: 3 5 10 3 4.5 8.0 7.0 10.0
+
+FORMATO DE Jardin.txt
+  Primera linea: filas columnas (entre 1 y 19)
+  Despues la matriz: 0 = pasto, 9 = obstaculo
+
+COMPILAR Y JUGAR EN WINDOWS
+  1. Abrir C:\w64devkit\w64devkit.exe
+  2. cd "C:/ruta/a/PVZ_FRUNA"
+  3. make
+  4. ./juego.exe
+
+COMPILAR Y JUGAR EN LINUX (con raylib instalado)
+  make
+  ./juego
+
+CONTROLES
+  Click en una carta y luego en una casilla para plantar.
+  Click en los soles para recogerlos.
+  La pala quita una planta. ESC cierra el juego.
