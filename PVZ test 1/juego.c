@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+//Funcion para leer el config
 int cargarConfig(const char *nombreArchivo) {
     FILE *Configuracion = fopen(nombreArchivo, "r");
 
@@ -10,6 +11,7 @@ int cargarConfig(const char *nombreArchivo) {
         return 0;
     }
 
+    //Creamos variables auxiliares para no guardar basura, por si despues algun valor no es valido
     int auxVidaCasa;
     int auxCantidadRondas;
     int auxZombiesPorRonda;
@@ -31,6 +33,7 @@ int cargarConfig(const char *nombreArchivo) {
         return 0;
     }
 
+    //Asignamos los valores de los auxiliares a las variables globales
     vidaCasa = auxVidaCasa;
     cantidadRondas = auxCantidadRondas;
     zombiesPorRonda = auxZombiesPorRonda;
@@ -44,6 +47,9 @@ int cargarConfig(const char *nombreArchivo) {
     return 1;
 }
 
+
+
+//Funcion para cargar el jardin
 int cargarJardin(const char *nombreArchivo) {
     FILE *Jardin = fopen(nombreArchivo, "r");
 
@@ -52,6 +58,7 @@ int cargarJardin(const char *nombreArchivo) {
         return 0;
     }
 
+    //Creamos variables auxiliares para no guardar basura, por si despues algun valor no es valido
     int auxFilas;
     int auxColumnas;
 
@@ -62,7 +69,7 @@ int cargarJardin(const char *nombreArchivo) {
     }
 
     if ((auxFilas <= 0) || (auxFilas >= 20) || (auxColumnas <= 0) || (auxColumnas >= 20)) {
-        printf("Las dimensiones del jardin deben ser mayor que cero\n");
+        printf("Las dimensiones del jardin deben ser mayor que cero y a lo mas 20\n");
         fclose(Jardin);
         return 0;
     }
@@ -70,12 +77,14 @@ int cargarJardin(const char *nombreArchivo) {
     filas = auxFilas;
     columnas = auxColumnas;
 
+    //Despues de asignarle valores a filas y columnas, comprobamos si existe espacio en la memoria para reservarla
     if (inicializarMatrices() == 0) {
         printf("Error al reservar memoria para las matrices\n");
         fclose(Jardin);
         return 0;
     }
 
+    //El archivo lee todos los valores para asignar los valores que puso el usuario
     for (int i = 0; i < filas; i++) {
         for (int j = 0; j < columnas; j++) {
             if (fscanf(Jardin, "%d", &jardin[i][j]) != 1) {
@@ -84,6 +93,7 @@ int cargarJardin(const char *nombreArchivo) {
                 fclose(Jardin);
                 return 0;
             }
+            //Verificamos que la matriz este compuesta solo de espacios vacios y obstaculos
             if ((jardin[i][j] != VACIO) && (jardin[i][j] != OBSTACULO)) {
                 printf("Error: Elemen##to invalido en el jardin\n");
                 liberarMatrices();
@@ -98,13 +108,12 @@ int cargarJardin(const char *nombreArchivo) {
 
 
 
-
-
+//Funcion para generar los obstaculos
 int generarObstaculos(void) {
     int obstaculosGenerados = 0;
     int casillasDisponibles = 0;
 
-    //Hay que recorrer el bucle por si en jardin.txt ya hay algun obstaculo
+    //Contamos las casillas disponibles para verificar si hay espacio para todos los obstaculos
     for (int i = 0; i < filas; i++) {
         for (int j = MARGEN_OBSTACULO; j < columnas; j++) {
             if (jardin[i][j] == VACIO) {
@@ -113,11 +122,13 @@ int generarObstaculos(void) {
         }
     }
     
+    //Comprobamos que hay espacio suficiente para generar todos los obstaculos
     if (cantidadObstaculos > casillasDisponibles) {
         printf("No hay suficientes casillas disponibles para los obstaculos\n");
         return 0;
     }
 
+    //Generamos los obstaculos en posiciones aleatorias, dejando un margen de espacios a la izquierda (zona protegida)
     while (obstaculosGenerados < cantidadObstaculos) {
         int filaRandom = GetRandomValue(0, filas - 1);
         int columnaRandom = GetRandomValue(MARGEN_OBSTACULO, columnas - 1);
@@ -137,10 +148,7 @@ int generarObstaculos(void) {
 
 
 
-
-
-
-
+//Funcion para crear las matrices para valores int
 int **crearMatrizInt(int filas, int columnas) {
     int **matriz = malloc(filas * sizeof(int *)); //Reserva memoria para los punteros de las filas
     if (matriz == NULL) { //Comprueba que se pueda reservar la memoria
@@ -156,11 +164,12 @@ int **crearMatrizInt(int filas, int columnas) {
             return NULL;
         }
     }
-return matriz;
+    return matriz;
 }
 
 
 
+//Funcion para crear las matrices para valores double
 double **crearMatrizDouble(int filas, int columnas) {
     double **matriz = malloc(filas * sizeof(double *));
     if (matriz == NULL) {
@@ -181,7 +190,16 @@ return matriz;
 
 
 
-//Esta funcion es para inicializar una matriz en memoria dinamica
+/*
+Esta funcion es para inicializar las matrices en memoria dinamica
+
+Al principio era solo el jardin, pero despues llegamos a la conclusion de que era buena idea implementarlo 
+para el cooldown de los girasoles (para que fuesen independientes), para el cooldown de los disparos de los 
+lanzaguisantes (tambien para que fuesen independientes) y para asginar la vida de cada planta segun su casilla.
+
+Decidimos esto porque estos valores dependen de la posicion de cada planta, por que necesitan las mismas
+dimensiones (filas * columnas)
+*/
 int inicializarMatrices(void) {
     jardin = crearMatrizInt(filas, columnas);
     tiempoUltimoSolGirasol = crearMatrizDouble(filas, columnas);
@@ -194,6 +212,7 @@ int inicializarMatrices(void) {
         return 0;
     }
 
+    //Inicializa todas en sus valores base
     for (int i = 0; i < filas; i++) {
         for (int j = 0; j < columnas; j++) {
             jardin[i][j] = VACIO;
@@ -241,13 +260,18 @@ void liberarMatrices(void) {
 
 
 
-//Esta funcion controla la generacion, movimiento y desaparicion de los soles
-void actualizarSoles(double tiempoActual) {
+
+
+
+//Esta funcion genera soles a partir de los girasoles 
+void generarSolesGirasoles(double tiempoActual) {
     for (int i = 0; i < filas; i++) {
         for (int j = 0; j < columnas; j++) {
+            //Busca en todo el jardin donde hay girasoles, y si ya paso el tiempo de su cooldown
             if ((jardin[i][j] == GIRASOL) && (tiempoActual - tiempoUltimoSolGirasol[i][j] >= cooldownSol)) {
                 for (int k = 0; k < SOLES_MAXIMOS; k++) {
-                    if (solesPantalla[k] == 0) { //Si se cumplen las condiciones, genera un sol
+                    //Si se cumplen las condiciones, genera un sol
+                    if (solesPantalla[k] == 0) {
                         solesPantalla[k] = 1;
                         solesTipo[k] = SOL_GIRASOL; //Declara que es un sol de girasol
                         solesX[k] = pxDistanciaX + anchoCasilla / 2 + j * anchoCasilla; //Calcula los pixeles del spawn
@@ -261,8 +285,13 @@ void actualizarSoles(double tiempoActual) {
             }
         }
     }
+}
 
-    // Verificamos si paso el cooldown de generacion de sol del cielo
+
+
+//Funcion para generar los soles del cielo
+void generarSolesCielo(double tiempoActual) {
+    //Verificamos si pasó el cooldown
     if (tiempoActual - tiempoUltimoSolCielo >= cooldownSolCielo) {
         for (int i = 0; i < SOLES_MAXIMOS; i++) {
             if (solesPantalla[i] == 0) {
@@ -277,15 +306,23 @@ void actualizarSoles(double tiempoActual) {
             }
         }
     }
-    
-    //Este bucle es para que soles del cielo se muevan
+}
+
+
+
+// Funcion para que los soles del cielo "caigan"
+void moverSolesCielo(void) {
     for (int i = 0; i < SOLES_MAXIMOS; i++) {
         if ((solesPantalla[i] == 1) && (solesTipo[i] == SOL_CIELO)) {
-            solesY[i] += velocidadSol *GetFrameTime();
+            solesY[i] += velocidadSol * GetFrameTime();
         }
     }
+}
 
-    //Verificamos si algun sol llego a su tiempo maximo para hacerlo despawnear
+
+
+//Funcion para desaparecer los soles si pasa su tiempo de duracion}
+void desaparecerSoles(double tiempoActual) {
     for (int i = 0; i < SOLES_MAXIMOS; i++) {
         if (solesPantalla[i] == 1) {
             if (tiempoActual - solesTiempo[i] > duracionSol) {
@@ -296,6 +333,9 @@ void actualizarSoles(double tiempoActual) {
         }
     }
 }
+
+
+
 
 
 
@@ -331,7 +371,7 @@ void generarZombies(double tiempoActual) {
                     zombies[i].cooldownAtaque = 1.5;
                 }
                 zombies[i].vivo = VIVO;
-                zombiesGenerados++;
+                zombiesGenerados++; //Aumenta el contador de zombies generados de la ronda actual
                 break;
             }
         }
@@ -341,65 +381,179 @@ void generarZombies(double tiempoActual) {
 
 
 
-//Funcion para controlar el movimiento, ataque y deteccion de plantas de los zombies
-void actualizarZombies(double tiempoActual) {
-    //Reinicia el contador para calcular cuantos zombies siguen vivos
+//Funcion para contar cuantos zombies estan vivos
+void contarZombiesVivos(void) {
     zombiesVivos = 0;
     for (int i = 0; i < ZOMBIES_MAXIMOS; i++) {
         if (zombies[i].vivo == VIVO) {
-            zombiesVivos++; //Cuenta cuantos zombies quedan vivos
+            zombiesVivos++;
+        }
+    }
+}
 
-            //Comprueba el estado de congelacion del zombie
+
+
+//Funcion para comprobar si un zombie esta congelado y actualizar su estado
+void congelacionZombies(double tiempoActual) {
+    for (int i = 0; i < ZOMBIES_MAXIMOS; i++) {
+        if ((zombies[i].vivo == VIVO) && (zombies[i].congelado == CONGELADO)) {
+            if (tiempoActual - zombies[i].tiempoCongelado >= duracionCongelacion) {
+                zombies[i].congelado = NO_CONGELADO;
+            }
+        }
+    }
+}
+
+
+
+//Funcion para mover los zombies
+void moverZombies(void) {
+    for (int i = 0; i < ZOMBIES_MAXIMOS; i++) {
+        if ((zombies[i].vivo == VIVO) && (zombies[i].estado == CAMINANDO)) {
+            //Se actualiza su posicion respecto a los pixeles en el eje x
             if (zombies[i].congelado == CONGELADO) {
-                if (tiempoActual - zombies[i].tiempoCongelado >= duracionCongelacion) {
-                    zombies[i].congelado = NO_CONGELADO;
-                }
+                zombies[i].x -= multRalentizacion * zombies[i].velocidad * GetFrameTime();
+            } else {
+                zombies[i].x -= zombies[i].velocidad * GetFrameTime();
+            }
+        }
+    }
+}
+
+
+
+//Funcion para detectar si los zombies llegan a la casa o encuentran plantas
+void detectarPlantasZombies(void) {
+    for (int i = 0; i < ZOMBIES_MAXIMOS; i++) {
+        if ((zombies[i].vivo == VIVO) && (zombies[i].estado == CAMINANDO)) {
+            int filaZombie = (zombies[i].y - pxDistanciaY) / altoCasilla;
+            int columnaZombie = (zombies[i].x - pxDistanciaX) / anchoCasilla;
+
+            //Comprobamos si el zombie llego a la casa
+            if (zombies[i].x <= pxDistanciaX - (anchoZombie / 2)) {
+                zombieCasa++;
+                zombies[i].vivo = MUERTO;
+                continue;
             }
 
-            //Si el zombie esta caminando entra a este if
-            if (zombies[i].estado == CAMINANDO) {
+            //Comprobamos si hay una planta en su camino
+            if ((filaZombie >= 0 && filaZombie < filas) && (columnaZombie >= 0 && columnaZombie < columnas)) {
+                if (vidaPlanta[filaZombie][columnaZombie] > 0) {
+                    zombies[i].estado = ATACANDO;
+                    zombies[i].columnaAtaque = columnaZombie;
+                    zombies[i].filaAtaque = filaZombie;
+                }
+            }
+        }
+    }
+}
+
+
+
+//Funcion para controlar los ataques de los zombies contra las plantas
+void actualizarAtaquesZombies(double tiempoActual) {
+    for (int i = 0; i < ZOMBIES_MAXIMOS; i++) {
+        if ((zombies[i].vivo == VIVO) && (zombies[i].estado == ATACANDO)) {
+
+            //Si la planta fue destruida, el zombie vuelve a caminar
+            if (vidaPlanta[zombies[i].filaAtaque][zombies[i].columnaAtaque] <= 0) {
+                jardin[zombies[i].filaAtaque][zombies[i].columnaAtaque] = VACIO;
+                vidaPlanta[zombies[i].filaAtaque][zombies[i].columnaAtaque] = 0;
+                zombies[i].estado = CAMINANDO;
+                zombies[i].columnaAtaque = -1;
+                zombies[i].filaAtaque = -1;
+
+            //Si la planta sigue viva, se calcula el cooldown del ataque y golpea si corresponde
+            } else {
+                double cooldownActual = zombies[i].cooldownAtaque;
+
                 if (zombies[i].congelado == CONGELADO) {
-                    zombies[i].x -= multRalentizacion * zombies[i].velocidad * GetFrameTime(); //Movimiento de los zombies
-                } else {
-                    zombies[i].x -= zombies[i].velocidad * GetFrameTime(); //Movimiento de los zombies
+                    cooldownActual *= 2.0;
                 }
-                int filaZombie = (zombies[i].y - pxDistanciaY) / altoCasilla;
-                int columnaZombie = (zombies[i].x - pxDistanciaX) / anchoCasilla;
 
-                //Comprobamos si llego a la casa
-                if (zombies[i].x <= pxDistanciaX - (anchoZombie / 2)) {
-                    zombieCasa++; //Se suma al contador de zombies en la casa
-                    zombies[i].vivo = MUERTO; //Se cambia su estado a muerto
-
-                //Si no llego a la casa, comprobamos si hay una planta en su camino
-                } else if ((filaZombie >= 0 && filaZombie < filas) && (columnaZombie >= 0 && columnaZombie < columnas)) {
-                    if (vidaPlanta[filaZombie][columnaZombie] > 0) {
-                        zombies[i].estado = ATACANDO; //Cambia su estado a atacando
-                        zombies[i].columnaAtaque = columnaZombie;
-                        zombies[i].filaAtaque = filaZombie;
-                    }
+                if (tiempoActual - zombies[i].tiempoUltimoAtaque >= cooldownActual) {
+                    zombies[i].tiempoUltimoAtaque = tiempoActual;
+                    vidaPlanta[zombies[i].filaAtaque][zombies[i].columnaAtaque] -= zombies[i].dano;
                 }
             }
-            //Si el zombie esta atacando a este if 
-            if (zombies[i].estado == ATACANDO) { 
-                //Si la planta es destruida se elimina del jardin y el zombie vuelve a caminar
-                if (vidaPlanta[zombies[i].filaAtaque][zombies[i].columnaAtaque] <= 0) {
-                    jardin[zombies[i].filaAtaque][zombies[i].columnaAtaque] = VACIO;
-                    vidaPlanta[zombies[i].filaAtaque][zombies[i].columnaAtaque] = 0;
-                    zombies[i].estado = CAMINANDO;
-                    zombies[i].columnaAtaque = -1;
-                    zombies[i].filaAtaque = -1;
-                //Si la planta sigue viva y paso el cooldown del ataque del zombie, se le resta el daño del zombie
-                } else {
-                    double cooldownActual = zombies[i].cooldownAtaque;
+        }
+    }
+}
 
-                    if (zombies[i].congelado == CONGELADO) {
-                        cooldownActual *= 2.0;
-                    }
 
-                    if (tiempoActual - zombies[i].tiempoUltimoAtaque >= cooldownActual) {
-                        zombies[i].tiempoUltimoAtaque = tiempoActual;
-                        vidaPlanta[zombies[i].filaAtaque][zombies[i].columnaAtaque] -= zombies[i].dano;
+
+// Transformamos la posicion de un zombie en un rectangulo
+Rectangle obtenerRectZombie(Zombie zombie) {
+    Rectangle rectZombie = {zombie.x, zombie.y, anchoZombie, altoZombie};
+    return rectZombie;
+}
+
+
+
+//Funcion para generar proyectiles de las plantas
+void generarProyectiles(double tiempoActual) {
+    for (int i = 0; i < filas; i++) {
+        for (int j = 0; j < columnas; j++) {
+
+            if ((jardin[i][j] == LANZAGUISANTES) || (jardin[i][j] == METRALLA) || (jardin[i][j] == CONGELADORA)) {
+                for (int k = 0; k < ZOMBIES_MAXIMOS; k++) {
+                    if (zombies[k].vivo == VIVO) { //Si detecta un zombie, comprueba si esta en la misma fila que la planta
+                        float pxSuperior = pxDistanciaY + i * altoCasilla;
+                        float pxInferior = pxSuperior + altoCasilla;
+                
+                        //El bucle se separa segun el tipo de planta (lanzaguisantes, metralla y congeladora)
+                        if (jardin[i][j] == LANZAGUISANTES) {
+                            //Verifica que el zombie este en la misma fila, que este a la derecha de la planta y que haya pasado el cooldown de disparo
+                            if ((zombies[k].y >= pxSuperior) && (zombies[k].y < pxInferior) && (zombies[k].x > pxDistanciaX + j * anchoCasilla + anchoCasilla / 2) && (tiempoActual - tiempoUltimoDisparo[i][j] >= cooldownLanzaguisantes)) {
+                                for (int l = 0; l < PROYECTILES_MAXIMOS; l++) {
+                                    if ((proyectiles[l].vivo == MUERTO) && (zombies[k].x > pxDistanciaX + j * anchoCasilla)) {
+                                        //Asigna los valores correspondientes al proyectil segun la planta
+                                        proyectiles[l].vivo = VIVO;
+                                        proyectiles[l].dano = 10;
+                                        proyectiles[l].velocidad = 350;
+                                        proyectiles[l].tipo = LANZAGUISANTES;
+                                        proyectiles[l].x = pxDistanciaX + j * anchoCasilla + anchoCasilla / 2;
+                                        proyectiles[l].y = pxDistanciaY + i * altoCasilla + altoCasilla / 2;
+                                        tiempoUltimoDisparo[i][j] = tiempoActual;
+                                        break;
+                                    }
+                                }
+                                break; //Sale del bucle de zombies
+                            }
+
+                        } else if (jardin[i][j] == METRALLA) {
+                            if ((zombies[k].y >= pxSuperior) && (zombies[k].y < pxInferior) && (zombies[k].x > pxDistanciaX + j * anchoCasilla + anchoCasilla / 2) && (tiempoActual - tiempoUltimoDisparo[i][j] >= cooldownMetralla)) {
+                                for (int l = 0; l < PROYECTILES_MAXIMOS; l++) {
+                                    if ((proyectiles[l].vivo == MUERTO) && (zombies[k].x > pxDistanciaX + j * anchoCasilla)) {
+                                        proyectiles[l].vivo = VIVO;
+                                        proyectiles[l].dano = 10;
+                                        proyectiles[l].velocidad = 350;
+                                        proyectiles[l].tipo = METRALLA;
+                                        proyectiles[l].x = pxDistanciaX + j * anchoCasilla + anchoCasilla / 2;
+                                        proyectiles[l].y = pxDistanciaY + i * altoCasilla + altoCasilla / 2;
+                                        tiempoUltimoDisparo[i][j] = tiempoActual;
+                                        break;
+                                    }
+                                }
+                                break; //Sale del bucle de zombies
+                            } 
+                        } else if (jardin[i][j] == CONGELADORA) {
+                            if ((zombies[k].y >= pxSuperior) && (zombies[k].y < pxInferior) && (zombies[k].x > pxDistanciaX + j * anchoCasilla + anchoCasilla / 2) && (tiempoActual - tiempoUltimoDisparo[i][j] >= cooldownLanzaguisantes)) {
+                                for (int l = 0; l < PROYECTILES_MAXIMOS; l++) {
+                                    if ((proyectiles[l].vivo == MUERTO) && (zombies[k].x > pxDistanciaX + j * anchoCasilla)) {
+                                        proyectiles[l].vivo = VIVO;
+                                        proyectiles[l].dano = 10;
+                                        proyectiles[l].velocidad = 350;
+                                        proyectiles[l].tipo = CONGELADORA;
+                                        proyectiles[l].x = pxDistanciaX + j * anchoCasilla + anchoCasilla / 2;
+                                        proyectiles[l].y = pxDistanciaY + i * altoCasilla + altoCasilla / 2;
+                                        tiempoUltimoDisparo[i][j] = tiempoActual;
+                                        break;
+                                    }
+                                }
+                                break; //Sale del bucle de zombies
+                            } 
+                        }
                     }
                 }
             }
@@ -409,94 +563,19 @@ void actualizarZombies(double tiempoActual) {
 
 
 
-//Funcion para controlar la generacion, colision y movimiento de los proyectiles
-void actualizarProyectiles(double tiempoActual) {
-    for (int i = 0; i < filas; i++) {
-        for (int j = 0; j < columnas; j++) {
-
-            if (jardin[i][j] == LANZAGUISANTES) {
-                for (int k = 0; k < ZOMBIES_MAXIMOS; k++) {
-                    //Si detecta un zombie, dispara
-                    if (zombies[k].vivo == VIVO) {
-                        float pxSuperior = pxDistanciaY + i * altoCasilla;
-                        float pxInferior = pxSuperior + altoCasilla;
-                        if ((zombies[k].y >= pxSuperior) && (zombies[k].y < pxInferior) && (zombies[k].x > pxDistanciaX + j * anchoCasilla + anchoCasilla / 2) && (tiempoActual - tiempoUltimoDisparo[i][j] >= cooldownLanzaguisantes)) {
-                            for (int l = 0; l < PROYECTILES_MAXIMOS; l++) {
-                                if ((proyectiles[l].vivo == MUERTO) && (zombies[k].x > pxDistanciaX + j * anchoCasilla)) {
-                                    proyectiles[l].vivo = VIVO;
-                                    proyectiles[l].dano = 10;
-                                    proyectiles[l].velocidad = 350;
-                                    proyectiles[l].tipo = LANZAGUISANTES;
-                                    proyectiles[l].x = pxDistanciaX + j * anchoCasilla + anchoCasilla / 2;
-                                    proyectiles[l].y = pxDistanciaY + i * altoCasilla + altoCasilla / 2;
-                                    tiempoUltimoDisparo[i][j] = tiempoActual;
-                                    break;
-                                }
-                            }
-                            break; //Sale del bucle de zombies
-                        } 
-                    }
-                }
-
-            } else if (jardin[i][j] == METRALLA) {
-                for (int k = 0; k < ZOMBIES_MAXIMOS; k++) {
-                    //Si detecta un zombie, dispara
-                    if (zombies[k].vivo == VIVO) {
-                        float pxSuperior = pxDistanciaY + i * altoCasilla;
-                        float pxInferior = pxSuperior + altoCasilla;
-                        if ((zombies[k].y >= pxSuperior) && (zombies[k].y < pxInferior) && (zombies[k].x > pxDistanciaX + j * anchoCasilla + anchoCasilla / 2) && (tiempoActual - tiempoUltimoDisparo[i][j] >= cooldownMetralla)) {
-                            for (int l = 0; l < PROYECTILES_MAXIMOS; l++) {
-                                if ((proyectiles[l].vivo == MUERTO) && (zombies[k].x > pxDistanciaX + j * anchoCasilla)) {
-                                    proyectiles[l].vivo = VIVO;
-                                    proyectiles[l].dano = 10;
-                                    proyectiles[l].velocidad = 350;
-                                    proyectiles[l].tipo = METRALLA;
-                                    proyectiles[l].x = pxDistanciaX + j * anchoCasilla + anchoCasilla / 2;
-                                    proyectiles[l].y = pxDistanciaY + i * altoCasilla + altoCasilla / 2;
-                                    tiempoUltimoDisparo[i][j] = tiempoActual;
-                                    break;
-                                }
-                            }
-                            break; //Sale del bucle de zombies
-                        } 
-                    }
-                }
-
-            } else if (jardin[i][j] == CONGELADORA) {
-                for (int k = 0; k < ZOMBIES_MAXIMOS; k++) {
-                    //Si detecta un zombie, dispara
-                    if (zombies[k].vivo == VIVO) {
-                        float pxSuperior = pxDistanciaY + i * altoCasilla;
-                        float pxInferior = pxSuperior + altoCasilla;
-                        if ((zombies[k].y >= pxSuperior) && (zombies[k].y < pxInferior) && (zombies[k].x > pxDistanciaX + j * anchoCasilla + anchoCasilla / 2) && (tiempoActual - tiempoUltimoDisparo[i][j] >= cooldownLanzaguisantes)) {
-                            for (int l = 0; l < PROYECTILES_MAXIMOS; l++) {
-                                if ((proyectiles[l].vivo == MUERTO) && (zombies[k].x > pxDistanciaX + j * anchoCasilla)) {
-                                    proyectiles[l].vivo = VIVO;
-                                    proyectiles[l].dano = 10;
-                                    proyectiles[l].velocidad = 350;
-                                    proyectiles[l].tipo = CONGELADORA;
-                                    proyectiles[l].x = pxDistanciaX + j * anchoCasilla + anchoCasilla / 2;
-                                    proyectiles[l].y = pxDistanciaY + i * altoCasilla + altoCasilla / 2;
-                                    tiempoUltimoDisparo[i][j] = tiempoActual;
-                                    break;
-                                }
-                            }
-                            break; //Sale del bucle de zombies
-                        } 
-                    }
-                }
-            }
-        }
-    }
-
-    //Actualizamos la posicion de los proyectiles en cada frame
+//Funcion para mover los proyectiles
+void moverProyectiles(void) {
     for (int i = 0; i < PROYECTILES_MAXIMOS; i++) {
         if (proyectiles[i].vivo == VIVO) {
             proyectiles[i].x += proyectiles[i].velocidad * GetFrameTime();
         }
     }
-    
-    //Comprobamos si los proyectiles impactan a algun zombie o si salen del jardin
+}
+
+
+
+//Funcion para detectar las colisiones de los proyectiles
+void detectarColisionesProyectiles(double tiempoActual) {
     for (int i = 0; i < PROYECTILES_MAXIMOS; i++) {
         if (proyectiles[i].vivo == VIVO) {
             if (proyectiles[i].x >= pxDistanciaX + anchoJardin) {
@@ -504,7 +583,7 @@ void actualizarProyectiles(double tiempoActual) {
             } else {
                 for (int j = 0; j < ZOMBIES_MAXIMOS; j++) {
                     if (zombies[j].vivo == VIVO) {
-                        if (CheckCollisionCircleRec((Vector2){proyectiles[i].x,proyectiles[i].y}, proyectilesRadio, (Rectangle){zombies[j].x, zombies[j].y, anchoZombie, altoZombie})) {
+                        if (CheckCollisionCircleRec((Vector2){proyectiles[i].x,proyectiles[i].y}, proyectilesRadio, obtenerRectZombie(zombies[j]))) {
                             zombies[j].vida -= proyectiles[i].dano; //Restamos el daño del proyectil a la vida del zombie
                             if (proyectiles[i].tipo == CONGELADORA) {
                                 zombies[j].congelado = CONGELADO;
@@ -562,7 +641,6 @@ void actualizarRondas(double tiempoActual) {
 
 
 
-
 //Funcion para la mecanica de la cereza
 void actualizarCereza (double tiempoActual) {
     if (cerezaActiva == 0) {
@@ -577,7 +655,7 @@ void actualizarCereza (double tiempoActual) {
 
     for (int i = 0; i < ZOMBIES_MAXIMOS; i++) {
         if (zombies[i].vivo == VIVO) {
-            Rectangle rectZombie = {zombies[i].x, zombies[i].y, anchoZombie, altoZombie};
+            Rectangle rectZombie = obtenerRectZombie(zombies[i]);
             int alcanzado = 0;
             for (int j = 0; j < 5; j++) {
                 int filaAfectada = filaCereza + desplazamientoFilas[j];
@@ -611,108 +689,125 @@ void actualizarCereza (double tiempoActual) {
 
 
 
+//Funcion para recoger soles
+int clickSoles(Vector2 posMouse) {
+    for (int i = 0; i < SOLES_MAXIMOS; i++) {
+        if (CheckCollisionPointCircle(posMouse,(Vector2){.x=solesX[i],.y=solesY[i]},solesRadio) && (solesPantalla[i] == 1)) {
+            //Si hay un sol, entonces se suma a los soles totales y se reinician su valores en los arreglos
+            soles += 25; 
+            solesPantalla[i] = 0;
+            solesTipo[i] = 0;
+            solesTiempo[i] = 0;
+            return 1;
+        }
+    }
+    return 0;
+}
 
-//Funcion para procesar los clicks
-void procesarClicks(Vector2 posMouse) {
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) { //Detectamos si el usuario hizo click izquierdo
 
-        //Primero verificamos si hay un sol en esa posicion
-        int solRecogido = 0;
-        for (int i = 0; i < SOLES_MAXIMOS; i++) {
-            if (CheckCollisionPointCircle(posMouse,(Vector2){.x=solesX[i],.y=solesY[i]},solesRadio) && (solesPantalla[i] == 1)) {
-                //Si hay un sol, entonces se suma a los soles totales y se reinician su valores en los arreglos
-                soles += 25; 
-                solesPantalla[i] = 0;
-                solRecogido = 1;
-                solesTipo[i] = 0;
-                solesTiempo[i] = 0;
-                break;
-            }
+
+//Funcion para procesar los clicks dentro del jardin
+void clickJardin(Vector2 posMouse) {
+    //Primero pasamos la posicion del mouse a las coords en el jardin
+    columnaSeleccionada = ((posMouse.x - pxDistanciaX) / anchoCasilla);
+    filaSeleccionada = ((posMouse.y - pxDistanciaY) / altoCasilla);
+
+    //Verifica si el usuario tiene seleccionada una planta y si en esa posicion del jardin no hay nada plantado
+    if ((plantaSeleccionada == PALA) && (jardin[filaSeleccionada][columnaSeleccionada] != VACIO) && (jardin[filaSeleccionada][columnaSeleccionada] != OBSTACULO))  {
+        jardin[filaSeleccionada][columnaSeleccionada] = VACIO;
+        vidaPlanta[filaSeleccionada][columnaSeleccionada] = 0;
+        tiempoUltimoSolGirasol[filaSeleccionada][columnaSeleccionada] = 0;
+        tiempoUltimoDisparo[filaSeleccionada][columnaSeleccionada] = 0;
+        plantaSeleccionada = VACIO; 
+
+    } else if ((plantaSeleccionada == CEREZA) && (jardin[filaSeleccionada][columnaSeleccionada] == VACIO) && (cerezaActiva == 0) && (soles >= costoCereza)) {
+        cerezaActiva = 1;
+        filaCereza = filaSeleccionada;
+        columnaCereza = columnaSeleccionada;
+        tiempoCereza = GetTime();
+        soles -= costoCereza;
+        plantaSeleccionada = VACIO;
+
+    } else if ((plantaSeleccionada != VACIO) && (plantaSeleccionada != PALA) && (jardin[filaSeleccionada][columnaSeleccionada] == VACIO)){
+        //Se asigna el costo correspondiente segun el tipo de planta seleccionada
+        int costo = 0;
+        if (plantaSeleccionada == GIRASOL) {
+            costo = costoGirasol;
+        } else if (plantaSeleccionada == LANZAGUISANTES) {
+            costo = costoLanzaguisantes;
+        } else if (plantaSeleccionada == NUEZ) {
+            costo = costoNuez;
+        } else if (plantaSeleccionada == METRALLA) {
+            costo = costoMetralla;
+        } else if (plantaSeleccionada == CONGELADORA) {
+            costo = costoCongeladora;
         }
 
-        //Si no se hizo click sobre ningun sol, entonces verifica que el click este dentro del jardin
-        if (solRecogido == 0) {
-            if ((posMouse.x>=pxDistanciaX) && (posMouse.x<(pxDistanciaX+anchoJardin)) && (posMouse.y>=pxDistanciaY) && (posMouse.y<(pxDistanciaY+altoJardin))) {
-                //Si el click esta dentro del jardin pasa su valor de pixeles a filas y columnas
-                int casillax = ((posMouse.x - pxDistanciaX) / anchoCasilla);
-                columnaSeleccionada = casillax;
-                int casillay = ((posMouse.y - pxDistanciaY) / altoCasilla);
-                filaSeleccionada = casillay;
+        //Si el usuario tiene suficientes soles, entonces la planta en ese lugar
+        if ((soles >= costo) && (plantaSeleccionada != CEREZA)){
+            jardin[filaSeleccionada][columnaSeleccionada] = plantaSeleccionada;
 
-                //Verifica si el usuario tiene seleccionada una planta y si en esa posicion del jardin no hay nada plantado
-                if ((plantaSeleccionada == PALA) && (jardin[filaSeleccionada][columnaSeleccionada] != VACIO) && (jardin[filaSeleccionada][columnaSeleccionada] != OBSTACULO))  {
-                    jardin[filaSeleccionada][columnaSeleccionada] = VACIO;
-                    vidaPlanta[filaSeleccionada][columnaSeleccionada] = 0;
-                    tiempoUltimoSolGirasol[filaSeleccionada][columnaSeleccionada] = 0;
-                    tiempoUltimoDisparo[filaSeleccionada][columnaSeleccionada] = 0;
-                    plantaSeleccionada = VACIO; 
+        /*
+        Si la planta es un girasol, ademas de plantarla inicia el contador para el spawneo de soles
+        Si la planta es un lanzaguisantes, ademas de plantarla inicia el cooldown entre disparos
 
-                } else if ((plantaSeleccionada == CEREZA) && (jardin[filaSeleccionada][columnaSeleccionada] == VACIO) && (cerezaActiva == 0) && (soles >= costoCereza)) {
-                    cerezaActiva = 1;
-                    filaCereza = filaSeleccionada;
-                    columnaCereza = columnaSeleccionada;
-                    tiempoCereza = GetTime();
-                    soles -= costoCereza;
-                    plantaSeleccionada = VACIO;
+        Ademas, a todas las plantas se les asigna su vida y se les resta su costo
+        */
+            if (plantaSeleccionada == GIRASOL) {
+                tiempoUltimoSolGirasol[filaSeleccionada][columnaSeleccionada] = GetTime();
+                vidaPlanta[filaSeleccionada][columnaSeleccionada] = VIDA_GIRASOL;
+            } else if (plantaSeleccionada == LANZAGUISANTES) {
+                tiempoUltimoDisparo[filaSeleccionada][columnaSeleccionada] = GetTime();
+                vidaPlanta[filaSeleccionada][columnaSeleccionada] = VIDA_LANZAGUISANTES;
+            } else if (plantaSeleccionada == NUEZ) {
+                vidaPlanta[filaSeleccionada][columnaSeleccionada] = VIDA_NUEZ;
+            } else if (plantaSeleccionada == METRALLA) {
+                tiempoUltimoDisparo[filaSeleccionada][columnaSeleccionada] = GetTime();
+                vidaPlanta[filaSeleccionada][columnaSeleccionada] = VIDA_METRALLA;
+            } else if (plantaSeleccionada == CONGELADORA) {
+                tiempoUltimoDisparo[filaSeleccionada][columnaSeleccionada] = GetTime();
+                vidaPlanta[filaSeleccionada][columnaSeleccionada] = VIDA_CONGELADORA;
+            } 
+            soles -= costo;
+            plantaSeleccionada = VACIO; //Se reinicia la planta seleccionada       
+        }
+    }
+}
 
-                } else if ((plantaSeleccionada != VACIO) && (plantaSeleccionada != PALA) && (jardin[filaSeleccionada][columnaSeleccionada] == VACIO)){
-                    //Se asigna el costo correspondiente segun el tipo de planta seleccionada
-                    int costo = 0;
-                    if (plantaSeleccionada == GIRASOL) {
-                        costo = costoGirasol;
-                    } else if (plantaSeleccionada == LANZAGUISANTES) {
-                        costo = costoLanzaguisantes;
-                    } else if (plantaSeleccionada == NUEZ) {
-                        costo = costoNuez;
-                    } else if (plantaSeleccionada == METRALLA) {
-                        costo = costoMetralla;
-                    } else if (plantaSeleccionada == CONGELADORA) {
-                        costo = costoCongeladora;
-                    }
 
-                    //Si el usuario tiene suficientes soles, entonces la planta en ese lugar
-                    if ((soles >= costo) && (plantaSeleccionada != CEREZA)){
-                        jardin[filaSeleccionada][columnaSeleccionada] = plantaSeleccionada;
 
-                    /*
-                    Si la planta es un girasol, ademas de plantarla inicia el contador para el spawneo de soles
-                    Si la planta es un lanzaguisantes, ademas de plantarla inicia el cooldown entre disparos
+//Procesar los clicks de la seleccion de plantas
+void clickMenu(Vector2 posMouse) {
+    for (int i = 0; i < 7; i++) { //Determinamos que planta selecciono el usuario
+        if ((posMouse.y >= 140 + 85 * i) && (posMouse.y <= 140 + 85 * (i + 1))) {
+            plantaSeleccionada = i + 1;
+        }
+    }
+}
 
-                    Ademas, a todas las plantas se les asigna su vida y se les resta su costo
-                    */
-                        if (plantaSeleccionada == GIRASOL) {
-                            tiempoUltimoSolGirasol[filaSeleccionada][columnaSeleccionada] = GetTime();
-                            vidaPlanta[filaSeleccionada][columnaSeleccionada] = VIDA_GIRASOL;
-                        } else if (plantaSeleccionada == LANZAGUISANTES) {
-                            tiempoUltimoDisparo[filaSeleccionada][columnaSeleccionada] = GetTime();
-                            vidaPlanta[filaSeleccionada][columnaSeleccionada] = VIDA_LANZAGUISANTES;
-                        } else if (plantaSeleccionada == NUEZ) {
-                            vidaPlanta[filaSeleccionada][columnaSeleccionada] = VIDA_NUEZ;
-                        } else if (plantaSeleccionada == METRALLA) {
-                            tiempoUltimoDisparo[filaSeleccionada][columnaSeleccionada] = GetTime();
-                            vidaPlanta[filaSeleccionada][columnaSeleccionada] = VIDA_METRALLA;
-                        } else if (plantaSeleccionada == CONGELADORA) {
-                            tiempoUltimoDisparo[filaSeleccionada][columnaSeleccionada] = GetTime();
-                            vidaPlanta[filaSeleccionada][columnaSeleccionada] = VIDA_CONGELADORA;
-                        } 
-                        soles -= costo;
-                        plantaSeleccionada = VACIO; //Se reinicia la planta seleccionada       
-                    }
-                }
 
-            //Se verifica si el click fue en la zona de seleccionar plantas
-            } else if ((posMouse.x>=64) && (posMouse.x<=204) && (posMouse.y>=140) && (posMouse.y<=725)) {
-                for (int i = 0; i < 7; i++) { //Determinamos que planta selecciono el usuario
-                    if ((posMouse.y>=140+85*i) && (posMouse.y<=140+85*(i+1))) {
-                        plantaSeleccionada = i+1;
-                    }
-                }
 
-            //Si el click no es en ninguno de los lugares interactuables, entonces reinicia la casilla seleccionada
-            } else {
-                filaSeleccionada = -1;
-                columnaSeleccionada = -1;
-            }
+//Funcion principal para procesar los clicks
+void procesarClicks(Vector2 posMouse) {
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+
+        //Primero verificamos si se hizo click sobre un sol
+        if (clickSoles(posMouse) == 1) {
+            return;
+        }
+
+        //Verifica si el click esta dentro del jardin
+        if ((posMouse.x >= pxDistanciaX) && (posMouse.x < pxDistanciaX + anchoJardin) && (posMouse.y >= pxDistanciaY) && (posMouse.y < pxDistanciaY + altoJardin)) {
+            clickJardin(posMouse);
+
+        //Verifica si el click esta dentro del menu
+        } else if ((posMouse.x >= 64) && (posMouse.x <= 204) && (posMouse.y >= 140) && (posMouse.y <= 725)) {
+            clickMenu(posMouse);
+
+        //Si el click no fue en ningun lugar interactuable reiniciamos la seleccion de la casilla
+        } else {
+            filaSeleccionada = -1;
+            columnaSeleccionada = -1;
         }
     }
 }
