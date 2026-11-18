@@ -1,11 +1,9 @@
 #include "juego.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <time.h>
 
 
 // Variables globales del juego
-
 // Estado general
 int estadoJuego = MENU;
 int filas = 5;
@@ -89,18 +87,21 @@ int **vidaPlanta;
 
 
 int main() {
-    SetRandomSeed((unsigned int)time(NULL));; //Inicializar la semilla de aleatoriedad para rand()
+    SetRandomSeed((unsigned int)time(NULL)); //Inicializar la semilla de aleatoriedad para rand()
 
+    //Cargamos la configuracion
     if (cargarConfig("Config.txt") == 0) {
         printf("Error al cargar Config.txt\n");
         return 1;
     }
 
+    //Cargamos el jardin
     if (cargarJardin("Jardin.txt") == 0) {
         printf("Error al cargar Jardin.txt\n");
         return 1;
     }
 
+    //Generamos los obstaculos que haya pedido el usuario
     if (generarObstaculos() == 0) {
         printf("Error al generar los obstaculos\n");
         liberarMatrices();
@@ -115,14 +116,14 @@ int main() {
     SetTargetFPS(60); //Establecemos los FPS del juego
 
     //Bucle mientras la pestaña este abierta, esto es para que se ejecute el juego en si
-    while (!WindowShouldClose()) { //Mientras no (!) se tenga que cerrar la ventana
+    while (!WindowShouldClose()) { 
 
         //Primero declaramos las variables que se usan independiente del estado del juego
         Vector2 posMouse = GetMousePosition(); //devuelve la posicion x e y (con posMouse.x y posMouse.y se accede a c/u)
         double tiempoActual = GetTime();
 
         /*
-        El juego esta separado en 4 grandes secciones:
+        El juego esta separado en 4secciones:
         0- MENU: Aqui se inicia la partida, y ademas se puede cerrar el juego
         1- JUGANDO: Todo el juego en si, es la logica de la partida
         2- WIN: Pantalla que aparece cuando el usuario gana
@@ -130,31 +131,32 @@ int main() {
         */
 
         if (estadoJuego == JUGANDO) {
-        /*
-        El bloque de jugando es el mas extenso ya que incluye casi toda la logica, asi que esta subdividido en
-        diferentes bloques para darle mas orden y que se entienda mejor
-
-        Este primer bloque es de la logica de los clicks, detecta donde se hace el click para despues decidir si 
-        corresponde a una casilla del jardin, a un sol, a una planta del menu o a un lugar sin nada seleccionable  
-        */
             
+            //Generamos los soles, actualizamos su movimiento y verificamos su despawneo
+            generarSolesGirasoles(tiempoActual);
+            generarSolesCielo(tiempoActual);
+            moverSolesCielo();
+            desaparecerSoles(tiempoActual);
 
-            //Para la generacion, movimiento y desaparicion de soles
-            actualizarSoles(tiempoActual);
-
-            //Para la generacion de los zombies
+            //Generacion de los zombies
             generarZombies(tiempoActual);
 
-            //Para actualizar los zombies
-            actualizarZombies(tiempoActual);
+            //Actualizamos los estados, movimientos y ataques de los zombies
+            congelacionZombies(tiempoActual);
+            moverZombies();
+            detectarPlantasZombies();
+            actualizarAtaquesZombies(tiempoActual);
 
-            //Para actualizar los proyectiles
-            actualizarProyectiles(tiempoActual);
+            //Se generan los proyectiles, se mueven y detectan colisiones
+            generarProyectiles(tiempoActual);
+            moverProyectiles();
+            detectarColisionesProyectiles(tiempoActual);
 
             //Para detectar y actualizar cerezas
             actualizarCereza(tiempoActual);
 
-            //Para actualizar las rondas y comprobar si el jugador gano o perdio
+            //Actualizar la cantidad de zombies vivos y comprobamos el estado de la ronda
+            contarZombiesVivos();
             actualizarRondas(tiempoActual);
 
             //Para detectar y procesar clicks
