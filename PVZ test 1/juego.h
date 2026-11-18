@@ -56,8 +56,6 @@
 #define NO_CONGELADO 0
 #define CONGELADO 1
 
-//Aqui estan todas las funciones de raylib: https://www.raylib.com/cheatsheet/cheatsheet.html
-
 int cargarConfig(const char *nombreArchivo);
 int cargarJardin(const char *nombreArchivo);
 
@@ -196,13 +194,34 @@ void liberarMatrices(void);
 int generarObstaculos(void);
 
 //Funciones para actualizar las mecanicas del juegp
-void actualizarSoles(double tiempoActual);
+
+void generarSolesGirasoles(double tiempoActual);
+void generarSolesCielo(double tiempoActual);
+void moverSolesCielo(void);
+void desaparecerSoles(double tiempoActual);
+
+
+
 void generarZombies(double tiempoActual);
-void actualizarZombies(double tiempoActual);
-void actualizarProyectiles(double tiempoActual);
+
+void contarZombiesVivos(void);
+void congelacionZombies(double tiempoActual);
+void moverZombies(void);
+void detectarPlantasZombies(void);
+void actualizarAtaquesZombies(double tiempoActual);
+Rectangle obtenerRectZombie(Zombie zombie);
+
+
+void generarProyectiles(double tiempoActual);
+void moverProyectiles(void);
+void detectarColisionesProyectiles(double tiempoActual);
+
 void actualizarRondas(double tiempoActual);
 void actualizarCereza(double tiempoActual);
 
 //Funcion para procesar las interacciones del jugador
+int clickSoles(Vector2 posMouse);
+void clickJardin(Vector2 posMouse);
+void clickMenu(Vector2 posMouse);
 void procesarClicks(Vector2 posMouse);
 #endif
