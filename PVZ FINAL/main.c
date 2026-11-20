@@ -180,7 +180,7 @@ int main() {
 
         //Dibujo de los elementos del juego (el orden determina que elementos quedan encima)
         BeginDrawing();
-        ClearBackground(DARKBROWN);
+        ClearBackground((Color){42,143,161,255});
 
         if (estadoJuego == JUGANDO) {
             dibujarHUD();
