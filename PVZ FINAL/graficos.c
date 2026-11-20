@@ -27,8 +27,8 @@ Texture2D texturaGuisanteHelado;
 #define COLOR_MURO_OSCURO (Color){100, 90, 85, 255}
 #define COLOR_PANEL (Color){55, 55, 60, 255}
 #define COLOR_CARTA (Color){40, 75, 125, 255}
-#define COLOR_BOTON (Color){130, 130, 130, 255}
-#define COLOR_BOTON_ENCIMA (Color){90, 90, 90, 255}
+#define COLOR_BOTON (Color){90, 90, 90, 255}
+#define COLOR_BOTON_ENCIMA (Color){70, 70, 70, 255}
 
 
 
